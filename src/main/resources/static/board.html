@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pharmacy – waiting room</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background: #0f2a3a; color: #fff; }
+    main { max-width: 1100px; }
+    h1 { font-size: 2.4rem; }
+    .cols { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .panel { border-radius: 20px; padding: 24px; min-height: 60vh; }
+    .ready { background: #137a3f; }
+    .prep { background: #1c4a63; }
+    .tickets { display: flex; flex-wrap: wrap; gap: 14px; }
+    .t { font-size: 3.4rem; font-weight: 800; background: rgba(255,255,255,.14); padding: 8px 22px; border-radius: 14px; }
+    .prep .t { font-size: 2rem; }
+    .empty { opacity: .7; font-size: 1.3rem; }
+    @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } .panel { min-height: 0; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="cols">
+    <section class="panel ready" aria-live="polite">
+      <h1>Now ready – please come to the counter</h1>
+      <div class="tickets" id="ready"></div>
+    </section>
+    <section class="panel prep">
+      <h1>Being prepared</h1>
+      <div class="tickets" id="prep"></div>
+    </section>
+  </div>
+</main>
+<script>
+const fill = (el, list, none) => {
+  el.replaceChildren();
+  if (!list.length) { const p = document.createElement('div'); p.className = 'empty'; p.textContent = none; el.append(p); return; }
+  list.forEach(t => { const d = document.createElement('div'); d.className = 't'; d.textContent = t; el.append(d); });
+};
+async function refresh() {
+  try {
+    const b = await (await fetch('/api/board')).json();
+    fill(document.querySelector('#ready'), b.ready, 'No prescriptions waiting right now');
+    fill(document.querySelector('#prep'), b.preparing, '–');
+  } catch (e) { /* keep last picture on screen */ }
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

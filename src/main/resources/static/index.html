@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pharmacy – hand in your prescription</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Hand in your prescription</h1>
+  <p class="muted">You'll get a ticket number and can follow your prescription live on your phone.</p>
+
+  <div id="resume" class="card" hidden>
+    <h2>You already have a ticket</h2>
+    <p><a id="resumeLink" href="#">Continue tracking <strong id="resumeTicket"></strong></a></p>
+  </div>
+
+  <form id="form" class="card" novalidate>
+    <label for="name">Your first name</label>
+    <input id="name" autocomplete="given-name" maxlength="60" required>
+
+    <label>Medications</label>
+    <div id="items" class="stack"></div>
+    <p><button type="button" id="add" class="secondary">+ Add another medication</button></p>
+
+    <p class="error" id="error" role="alert"></p>
+    <button type="submit" id="submit">Get my ticket</button>
+  </form>
+
+  <form id="lookup" class="card" novalidate>
+    <h2>Lost your page? Enter your ticket number</h2>
+    <div class="row">
+      <input id="ticket" inputmode="numeric" placeholder="e.g. 7" aria-label="Ticket number">
+      <button type="submit" class="secondary" style="flex:0 0 auto">Find</button>
+    </div>
+    <p class="error" id="lookupError" role="alert"></p>
+  </form>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+let medications = [];
+
+async function init() {
+  medications = await (await fetch('/api/medications')).json();
+  addRow();
+  const saved = localStorage.getItem('pharmacy.order');
+  if (saved) {
+    const r = await fetch('/api/orders/' + saved);
+    if (r.ok) {
+      const v = await r.json();
+      if (!v.terminal) {
+        $('#resumeTicket').textContent = v.ticket;
+        $('#resumeLink').href = '/track.html?id=' + saved;
+        $('#resume').hidden = false;
+      }
+    }
+  }
+}
+
+function addRow() {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const select = document.createElement('select');
+  select.setAttribute('aria-label', 'Medication');
+  medications.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m.name;
+    o.textContent = m.name + ' (' + m.category + ')' + (m.inStock ? '' : ' – currently unavailable');
+    o.disabled = !m.inStock;
+    select.appendChild(o);
+  });
+  const first = medications.find(m => m.inStock);
+  if (first) select.value = first.name;
+  const qty = document.createElement('input');
+  qty.className = 'qty'; qty.type = 'number'; qty.min = 1; qty.max = 30; qty.value = 1;
+  qty.setAttribute('aria-label', 'Quantity');
+  row.append(select, qty);
+  $('#items').appendChild(row);
+}
+
+$('#add').addEventListener('click', addRow);
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#error').textContent = '';
+  const items = [...document.querySelectorAll('#items .row')].map(r => ({
+    medication: r.querySelector('select').value,
+    quantity: parseInt(r.querySelector('input').value, 10),
+  }));
+  $('#submit').disabled = true;
+  try {
+    const r = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientName: $('#name').value, items }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || 'Something went wrong. Please try again.');
+    localStorage.setItem('pharmacy.order', body.orderId);
+    location.href = '/track.html?id=' + body.orderId;
+  } catch (err) {
+    $('#error').textContent = err.message;
+    $('#submit').disabled = false;
+  }
+});
+
+$('#lookup').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#lookupError').textContent = '';
+  const t = $('#ticket').value.trim();
+  if (!t) return;
+  const r = await fetch('/api/tickets/' + encodeURIComponent(t));
+  if (!r.ok) { $('#lookupError').textContent = "We couldn't find that ticket."; return; }
+  const { orderId } = await r.json();
+  location.href = '/track.html?id=' + orderId;
+});
+
+init();
+</script>
+</body>
+</html>

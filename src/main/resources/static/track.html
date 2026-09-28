@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your prescription</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .live { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--muted); margin: 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #c2c9d0; }
+    .live.on .dot { background: var(--ok); }
+    .live.off .dot { background: #d9822b; }
+    .ticket { font-size: 4.2rem; font-weight: 800; letter-spacing: .04em; line-height: 1.1; }
+    #panel { text-align: center; padding: 28px 20px; transition: background .3s, border-color .3s; }
+    #panel.ready { background: var(--ok-bg); border-color: var(--ok); }
+    #panel.ready h1, #panel.ready .ticket { color: var(--ok); }
+    #panel.attention { background: var(--warn-bg); border-color: #e0b060; }
+    #panel.attention h1 { color: var(--warn); }
+    #panel.done { background: #eef2f6; }
+    #detail { font-size: 1.15rem; margin: 6px 0 0; }
+    ol.steps { display: flex; list-style: none; padding: 0; margin: 20px 0; }
+    ol.steps li { flex: 1; text-align: center; font-size: .85rem; color: var(--muted); position: relative; }
+    ol.steps li::before { content: attr(data-step); display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; margin: 0 auto 6px; border-radius: 50%; background: #dfe7ee; font-weight: 700; }
+    ol.steps li::after { content: ""; position: absolute; top: 16px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 3px; background: #dfe7ee; }
+    ol.steps li:last-child::after { display: none; }
+    ol.steps li.done::before { background: var(--ok); color: #fff; content: "✓"; }
+    ol.steps li.done::after { background: var(--ok); }
+    ol.steps li.current { color: var(--ink); font-weight: 700; }
+    ol.steps li.current::before { background: var(--brand); color: #fff; box-shadow: 0 0 0 5px #cfe6f1; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="live" id="live" role="status"><span class="dot"></span><span id="liveText">Connecting…</span></p>
+
+  <section id="panel" class="card" aria-live="polite">
+    <div class="muted">Your number</div>
+    <div class="ticket" id="ticket">–</div>
+    <h1 id="headline">Loading…</h1>
+    <p id="detail"></p>
+  </section>
+
+  <ol class="steps" id="steps" aria-label="Progress">
+    <li data-step="1">Received</li>
+    <li data-step="2">Pharmacist check</li>
+    <li data-step="3">Preparing</li>
+    <li data-step="4">Ready</li>
+  </ol>
+
+  <p class="muted" id="hint">Keep this page open. It updates by itself and this phone will buzz when your prescription is ready.</p>
+  <p><a href="/">Hand in another prescription</a></p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const id = new URLSearchParams(location.search).get('id') || localStorage.getItem('pharmacy.order');
+let es = null, live = false, last = null, finished = false;
+
+if (!id) {
+  problem('No ticket found. Please hand in your prescription first.');
+} else {
+  snapshot();
+  connect();
+  setInterval(() => { if (!live && !finished) snapshot(); }, 10000); // fallback if SSE is blocked
+  keepScreenOn();
+}
+
+function connect() {
+  if (finished) return;
+  es = new EventSource('/api/orders/' + id + '/stream');
+  es.onopen = () => setLive(true);
+  es.addEventListener('status', e => { setLive(true); render(JSON.parse(e.data)); });
+  es.onerror = () => {
+    setLive(false);
+    if (es.readyState === EventSource.CLOSED) { es.close(); setTimeout(connect, 3000); }
+  };
+}
+
+async function snapshot() {
+  try {
+    const r = await fetch('/api/orders/' + id);
+    if (r.status === 404) return problem("We couldn't find that ticket. Please ask at the counter.");
+    render(await r.json());
+  } catch (e) { /* offline: keep trying */ }
+}
+
+function render(v) {
+  if (last && JSON.stringify(last) === JSON.stringify(v)) return;
+  const wasReady = last && last.status === 'READY';
+  last = v;
+  $('#ticket').textContent = v.ticket;
+  $('#headline').textContent = v.headline;
+  $('#detail').textContent = v.detail;
+  $('#panel').className = 'card' + (v.status === 'READY' ? ' ready' : '')
+    + (v.needsAttention ? ' attention' : '') + (v.status === 'COLLECTED' ? ' done' : '');
+  $('#steps').hidden = v.needsAttention;
+  document.querySelectorAll('#steps li').forEach(li => {
+    const n = Number(li.dataset.step);
+    li.className = v.step > n ? 'done' : (v.step === n ? 'current' : '');
+  });
+  document.title = v.status === 'READY' ? 'READY – ' + v.ticket : v.ticket + ' – Pharmacy';
+  if (v.status === 'READY' && !wasReady && navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+  if (v.terminal) finish();
+}
+
+function finish() {
+  finished = true;
+  if (es) es.close();
+  $('#live').hidden = true;
+  $('#hint').hidden = true;
+}
+
+function setLive(on) {
+  live = on;
+  $('#live').className = 'live ' + (on ? 'on' : 'off');
+  $('#liveText').textContent = on ? 'Live updates on' : 'Reconnecting…';
+}
+
+function problem(msg) {
+  finished = true;
+  $('#headline').textContent = msg;
+  $('#ticket').textContent = '';
+  $('#live').hidden = true;
+}
+
+async function keepScreenOn() {
+  try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
+}
+</script>
+</body>
+</html>

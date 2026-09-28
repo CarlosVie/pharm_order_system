@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pharmacy – staff</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    main { max-width: 900px; }
+    body { font-size: 16px; }
+    .order { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+    .order:first-of-type { border-top: 0; }
+    .order .who { flex: 1; }
+    .order button { padding: 8px 12px; }
+    .tk { font-weight: 800; font-size: 1.1rem; }
+    .banner { background: #fbe9e7; color: var(--bad); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { text-align: left; padding: 4px 8px; border-top: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Staff console</h1>
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="card"><h2>1. Pharmacist: waiting for review</h2><div id="awaiting"></div></section>
+  <section class="card"><h2>2. Packaging</h2><div id="packaging"></div></section>
+  <section class="card"><h2>3. Ready: call the number, then hand over</h2><div id="ready"></div></section>
+  <section class="card"><h2>Needs attention (rejected / failed, last 2 hours)</h2><div id="attention"></div></section>
+  <section class="card"><h2>Stock</h2><table id="stock"></table></section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/staff/overview');
+    if (!r.ok) throw new Error();
+    const o = await r.json();
+    list('#awaiting', o.awaitingPharmacist, [['Approve', 'approve', ''], ['Reject', 'reject', 'danger']]);
+    list('#packaging', o.packaging, [['Mark packed', 'packed', '']]);
+    list('#ready', o.ready, [['Handed over', 'collected', '']]);
+    list('#attention', o.needsAttention, []);
+    stock(o.stock);
+    $('#banner').hidden = true;
+  } catch (e) {
+    showError('Cannot reach the server. Retrying…');
+  }
+}
+
+function list(sel, orders, actions) {
+  const el = $(sel);
+  el.replaceChildren();
+  if (!orders.length) { const p = document.createElement('div'); p.className = 'muted'; p.textContent = 'Nothing here'; el.append(p); return; }
+  orders.forEach(o => {
+    const row = document.createElement('div'); row.className = 'order';
+    const who = document.createElement('div'); who.className = 'who';
+    const tk = document.createElement('span'); tk.className = 'tk'; tk.textContent = o.ticket;
+    who.append(tk, ' ' + o.patientName + ' – ' + o.items.join(', '));
+    if (o.message) { const m = document.createElement('div'); m.className = 'muted'; m.textContent = o.message; who.append(m); }
+    row.append(who);
+    actions.forEach(([label, action, cls]) => {
+      const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls;
+      b.onclick = () => act(o.id, action, b);
+      row.append(b);
+    });
+    el.append(row);
+  });
+}
+
+function stock(items) {
+  const t = $('#stock'); t.replaceChildren();
+  items.forEach(i => {
+    const tr = document.createElement('tr');
+    [i.medication, i.category, String(i.quantity)].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.append(td); });
+    t.append(tr);
+  });
+}
+
+async function act(id, action, button) {
+  let query = '';
+  if (action === 'reject') {
+    const reason = prompt('Reason to show the patient (optional)');
+    if (reason === null) return;
+    if (reason.trim()) query = '?reason=' + encodeURIComponent(reason.trim());
+  }
+  button.disabled = true;
+  try {
+    const r = await fetch('/api/staff/orders/' + id + '/' + action + query, { method: 'POST' });
+    if (!r.ok) { const b = await r.json().catch(() => ({})); showError(b.error || 'Action failed'); }
+  } catch (e) { showError('Cannot reach the server.'); }
+  refresh();
+}
+
+function showError(msg) { const b = $('#banner'); b.textContent = msg; b.hidden = false; }
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

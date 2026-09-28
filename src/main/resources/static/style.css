@@ -1,0 +1,24 @@
+:root {
+  --bg: #f4f7fa; --ink: #12222f; --muted: #566674; --card: #ffffff; --line: #d9e2ea;
+  --brand: #0b6e99; --ok: #137a3f; --ok-bg: #e6f6ec; --warn: #9a5b00; --warn-bg: #fff4e0; --bad: #b42318;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 18px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+main { max-width: 680px; margin: 0 auto; padding: 20px 16px 56px; }
+h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 8px; }
+h2 { font-size: 1.1rem; margin: 0 0 8px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 16px 0; }
+label { display: block; font-weight: 600; margin: 14px 0 4px; }
+input, select, button { font: inherit; }
+input, select { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+button { padding: 12px 18px; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font-weight: 600; cursor: pointer; }
+button.secondary { background: #e6edf3; color: var(--ink); }
+button.danger { background: #fbe9e7; color: var(--bad); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #7cc4e4; outline-offset: 2px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > * { flex: 1; }
+.row > .qty { flex: 0 0 90px; }
+.muted { color: var(--muted); }
+.error { color: var(--bad); font-weight: 600; min-height: 1.5em; }
+.stack > * + * { margin-top: 12px; }
