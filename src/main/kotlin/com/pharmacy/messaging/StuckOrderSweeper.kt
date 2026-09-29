@@ -1,7 +1,7 @@
-package com.pharmacy.infrastructure.messaging
+package com.pharmacy.messaging
 
 import com.pharmacy.domain.OrderStatus
-import com.pharmacy.infrastructure.persistence.OrderRepository
+import com.pharmacy.repository.OrderRepository
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
 import org.springframework.scheduling.annotation.Scheduled

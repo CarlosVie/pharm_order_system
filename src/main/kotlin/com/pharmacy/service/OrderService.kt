@@ -1,16 +1,17 @@
-package com.pharmacy.application
+package com.pharmacy.service
 
 import com.pharmacy.domain.IllegalTransitionException
 import com.pharmacy.domain.InvalidOrderException
 import com.pharmacy.domain.OrderItem
 import com.pharmacy.domain.OrderNotFoundException
 import com.pharmacy.domain.OrderStatus
+import com.pharmacy.domain.OrderStatus.RECEIVED
 import com.pharmacy.domain.OutOfStockException
 import com.pharmacy.domain.PrescriptionOrder
-import com.pharmacy.infrastructure.messaging.OrderPublisher
-import com.pharmacy.infrastructure.persistence.OrderRepository
-import com.pharmacy.infrastructure.persistence.StockRepository
-import com.pharmacy.infrastructure.sse.StatusHub
+import com.pharmacy.messaging.OrderPublisher
+import com.pharmacy.repository.OrderRepository
+import com.pharmacy.repository.StockRepository
+import com.pharmacy.sse.StatusHub
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
 import org.springframework.stereotype.Service
@@ -38,8 +39,6 @@ class OrderService(
     private val tx: TransactionTemplate,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    // ---------------------------------------------------------------- patient side
 
     fun submit(patientName: String, requested: List<OrderItem>): PrescriptionOrder {
         val name = patientName.trim()
@@ -85,22 +84,20 @@ class OrderService(
         preparing = orders.findByStatus(OrderStatus.PACKAGING).map { it.ticket },
     )
 
-    // ---------------------------------------------------------------- queue consumers
-
     fun checkInventory(id: UUID) {
         val order = orders.find(id)
         if (order == null) {
             log.warn("Inventory message for unknown order {}", id)
             return
         }
-        if (order.status != OrderStatus.RECEIVED) return // duplicate delivery
+        if (order.status != RECEIVED) return // duplicate delivery
         try {
             inventory.reserve(order)
         } catch (e: OutOfStockException) {
             move(
                 id, OrderStatus.REJECTED,
                 "Sorry, ${e.medication} is out of stock right now. Please speak to the pharmacist at the counter.",
-                only = setOf(OrderStatus.RECEIVED),
+                only = setOf(RECEIVED),
             )
             return
         }
@@ -109,7 +106,7 @@ class OrderService(
     }
 
     fun enterPharmacistQueue(id: UUID) {
-        move(id, OrderStatus.AWAITING_PHARMACIST, only = setOf(OrderStatus.RECEIVED))
+        move(id, OrderStatus.AWAITING_PHARMACIST, only = setOf(RECEIVED))
     }
 
     fun enterPackaging(id: UUID) {
@@ -126,11 +123,8 @@ class OrderService(
         if (failed) log.error("Order {} failed after retries (stuck in {}); stock released", id, stuckIn)
     }
 
-    // ---------------------------------------------------------------- staff commands
-
     fun approve(id: UUID) {
         requireStatus(id, OrderStatus.AWAITING_PHARMACIST)
-        // Broker down -> AmqpException -> HTTP 503, state unchanged, the pharmacist clicks again.
         publisher.toPackaging(id)
     }
 
@@ -170,8 +164,6 @@ class OrderService(
             stock = stock.all(),
         )
     }
-
-    // ---------------------------------------------------------------- internals
 
     private fun requireStatus(id: UUID, expected: OrderStatus): PrescriptionOrder {
         val order = orders.find(id) ?: throw OrderNotFoundException(id.toString())
@@ -232,7 +224,7 @@ class OrderService(
             else -> null
         }
         val (headline, detail) = when (o.status) {
-            OrderStatus.RECEIVED ->
+            RECEIVED ->
                 "We've received your prescription" to "Checking that everything is in stock."
             OrderStatus.AWAITING_PHARMACIST ->
                 "The pharmacist is reviewing your prescription" to aheadText(ahead ?: 0)

@@ -1,4 +1,4 @@
-package com.pharmacy.infrastructure.messaging
+package com.pharmacy.messaging
 
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder

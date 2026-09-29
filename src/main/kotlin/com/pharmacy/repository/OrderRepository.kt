@@ -1,4 +1,4 @@
-package com.pharmacy.infrastructure.persistence
+package com.pharmacy.repository
 
 import com.pharmacy.domain.OrderItem
 import com.pharmacy.domain.OrderStatus

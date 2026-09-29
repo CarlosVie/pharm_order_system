@@ -1,11 +1,11 @@
 package com.pharmacy
 
-import com.pharmacy.application.OrderService
+import com.pharmacy.service.OrderService
 import com.pharmacy.domain.IllegalTransitionException
 import com.pharmacy.domain.OrderItem
 import com.pharmacy.domain.OrderStatus
-import com.pharmacy.infrastructure.messaging.OrderPublisher
-import com.pharmacy.infrastructure.persistence.OrderRepository
+import com.pharmacy.messaging.OrderPublisher
+import com.pharmacy.repository.OrderRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.verify
@@ -75,7 +75,7 @@ class OrderFlowTest {
 
         service.collect(order.id)
         assertEquals(OrderStatus.COLLECTED, statusOf(order))
-        assertEquals(8, stockOf("Amoxicillin")) // dispensed stock stays gone
+        assertEquals(8, stockOf("Amoxicillin"))
     }
 
     @Test

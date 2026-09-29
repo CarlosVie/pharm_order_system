@@ -1,6 +1,6 @@
-package com.pharmacy.infrastructure.messaging
+package com.pharmacy.messaging
 
-import com.pharmacy.application.OrderService
+import com.pharmacy.service.OrderService
 import com.pharmacy.domain.OrderStatus
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.annotation.RabbitListener

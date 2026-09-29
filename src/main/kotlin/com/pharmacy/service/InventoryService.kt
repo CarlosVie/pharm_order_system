@@ -1,10 +1,10 @@
-package com.pharmacy.application
+package com.pharmacy.service
 
 import com.pharmacy.domain.OrderItem
 import com.pharmacy.domain.OutOfStockException
 import com.pharmacy.domain.PrescriptionOrder
-import com.pharmacy.infrastructure.persistence.OrderRepository
-import com.pharmacy.infrastructure.persistence.StockRepository
+import com.pharmacy.repository.OrderRepository
+import com.pharmacy.repository.StockRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

@@ -1,4 +1,4 @@
-package com.pharmacy.application
+package com.pharmacy.service
 
 import com.pharmacy.domain.StockItem
 

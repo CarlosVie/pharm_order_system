@@ -1,6 +1,6 @@
-package com.pharmacy.infrastructure.sse
+package com.pharmacy.sse
 
-import com.pharmacy.application.OrderView
+import com.pharmacy.service.OrderView
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
@@ -9,6 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
+import kotlin.collections.iterator
 
 /**
  * Keeps the open "live status" connections of patients in the waiting room.

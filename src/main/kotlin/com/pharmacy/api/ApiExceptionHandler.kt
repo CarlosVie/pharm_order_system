@@ -1,4 +1,4 @@
-package com.pharmacy.web
+package com.pharmacy.api
 
 import com.pharmacy.domain.IllegalTransitionException
 import com.pharmacy.domain.InvalidOrderException

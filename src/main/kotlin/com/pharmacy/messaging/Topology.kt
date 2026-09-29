@@ -1,4 +1,4 @@
-package com.pharmacy.infrastructure.messaging
+package com.pharmacy.messaging
 
 /** Names of everything we declare in RabbitMQ. */
 object Topology {
@@ -12,8 +12,6 @@ object Topology {
     const val PHARMACIST_KEY = "pharmacist"
     const val PACKAGING_KEY = "packaging"
 
-    // Failed messages leave through a dead-letter exchange. Each stage uses its own key
-    // so the handler knows which stage failed.
     const val DEAD_LETTER_EXCHANGE = "pharmacy.dlx"
     const val DEAD_LETTER_QUEUE = "pharmacy.dead-letter"
     const val DEAD_INVENTORY = "dead.inventory"
